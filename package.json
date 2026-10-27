@@ -1,0 +1,28 @@
+{
+  "name": "babelduo_react_evidencia2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start:backend": "cd backend && npm run dev",
+    "start:frontend": "cd frontend && npm run dev",
+    "app": "concurrently \"npm run start:backend\" \"npm run start:frontend\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yuligomg2-lang/babel-duo-version-2.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/yuligomg2-lang/babel-duo-version-2/issues"
+  },
+  "homepage": "https://github.com/yuligomg2-lang/babel-duo-version-2#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.6.2",
+    "concurrently": "^10.0.5",
+    "dotenv": "^18.0.3"
+  }
+}
