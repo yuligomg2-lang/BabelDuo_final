@@ -7,7 +7,7 @@ export interface UserProfile {
   language: string;
   interests: string[];
   isGuest: boolean;
-  createdAt?: any;
+  createdAt?: string;
   expiresAt?: string; // Fecha en la que expira la sesión del invitado.
 }
 
@@ -51,3 +51,11 @@ export const LANGUAGES = [
   { code: "ja", name: "日本語" },
   { code: "ko", name: "한국어" },
 ];
+
+export interface NewRoom {
+  name: string;
+  description: string;
+  theme: string;
+  languages: string[];
+  isPrivate: boolean;
+}

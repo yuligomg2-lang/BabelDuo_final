@@ -3,7 +3,6 @@ import type { UserProfile } from "../types";
 import { useAuthForm } from "../hooks/useAuthForm";
 import LoginForm from "../components/auth/LoginForm";
 import { API_URL } from "../services/api";
-import { GUEST_SESSION_DURATION } from "../helpers/constants";
 import AuthLayout from "../components/Layout/AuthLayout";
 
 interface LoginProps {
@@ -11,7 +10,7 @@ interface LoginProps {
   onUserUpdate: (user: UserProfile | null) => void;
 }
 
-const Login = ({ user, onUserUpdate }: LoginProps) => {
+const Login = ({ onUserUpdate }: LoginProps) => {
   const navigate = useNavigate();
 
   const {

@@ -39,7 +39,6 @@ export default function ForgotPasswordForm({
   email,
   loading,
   error,
-  successMessage,
   setEmail,
   handleForgotPassword,
   onLogin,

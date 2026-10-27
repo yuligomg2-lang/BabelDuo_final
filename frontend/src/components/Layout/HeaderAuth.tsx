@@ -1,11 +1,7 @@
 import { motion, AnimatePresence } from "motion/react";
 import type { UserProfile } from "../../types";
 import { LANGUAGES } from "../../types";
-import {
-  LogOut,
-  User as UserIcon,
-  Settings as SettingsIcon,
-} from "lucide-react";
+import { LogOut, Settings as SettingsIcon } from "lucide-react";
 
 interface HeaderAuthProps {
   user: UserProfile;
@@ -29,7 +25,7 @@ interface HeaderAuthProps {
  *
  * @returns Tiempo restante en días, horas o minutos.
  */
-  const getRemainingTime = (user: UserProfile) => {
+const getRemainingTime = (user: UserProfile) => {
   // Si el usuario no tiene fecha de expiración, no se muestra nada
   if (!user.expiresAt) return "";
 

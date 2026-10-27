@@ -3,7 +3,7 @@ import { useAuthForm } from "../hooks/useAuthForm";
 import AuthLayout from "../components/Layout/AuthLayout";
 import RegisterForm from "../components/auth/RegisterForm";
 import { API_URL } from "../services/api";
-import type { UserProfile } from "../types";
+// import type { UserProfile } from "../types";
 
 function Register() {
   const navigate = useNavigate();

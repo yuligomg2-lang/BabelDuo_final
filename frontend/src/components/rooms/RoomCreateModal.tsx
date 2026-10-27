@@ -1,19 +1,12 @@
 import type React from "react";
 import { motion } from "motion/react";
 import { MessageSquare } from "lucide-react";
+import type { NewRoom } from "../../types";
 
 interface RoomCreateModalProps {
   loading: boolean;
-  newRoom: {
-    name: string;
-    theme: string;
-  };
-  setNewRoom: React.Dispatch<
-    React.SetStateAction<{
-      name: string;
-      theme: string;
-    }>
-  >;
+  newRoom: NewRoom;
+  setNewRoom: React.Dispatch<React.SetStateAction<NewRoom>>;
   onClose: () => void;
   onSubmit: (e: React.FormEvent) => void;
 }

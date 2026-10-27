@@ -1,5 +1,5 @@
 import { API_URL } from "../../services/api";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import type { Room, UserProfile } from "../../types";
 import HeaderAuth from "./HeaderAuth";
 import { RoomList } from "../rooms/RoomList";
@@ -11,15 +11,15 @@ interface MainLayoutProps {
 }
 
 const MainLayout = ({ user, onUserUpdate }: MainLayoutProps) => {
-  const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const [, setError] = useState("");
+  const [, setSuccessMessage] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const [language, setLanguage] = useState(user?.language || "es");
   const [interests, setInterests] = useState(user?.interests?.join(", ") || "");
   const [loading, setLoading] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [refreshRooms, setRefreshRooms] = useState(0);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  // const scrollRef = useRef<HTMLDivElement>(null);
 
   //Metodos
   /**
@@ -74,10 +74,12 @@ const MainLayout = ({ user, onUserUpdate }: MainLayoutProps) => {
 
       // Mostrar mensaje de éxito
       setSuccessMessage("Configuración actualizada correctamente.");
-    } catch (error: any) {
-      setError(error.message || "Error al guardar cambios");
+    } catch (error: unknown) {
+      const mensaje =
+        error instanceof Error ? error.message : "Error al guardar cambios";
+
+      setError(mensaje);
     } finally {
-      // Ocultar indicador de carga
       setLoading(false);
     }
   };

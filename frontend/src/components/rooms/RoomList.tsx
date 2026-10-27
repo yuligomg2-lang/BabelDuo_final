@@ -1,6 +1,6 @@
 import { API_URL } from "../../services/api";
-import React, { useState, useEffect } from "react";
-import type { Message, Room, UserProfile } from "../../types";
+import React, { useState, useEffect, useCallback } from "react";
+import type { Message, NewRoom, Room, UserProfile } from "../../types";
 import { MessageSquare } from "lucide-react";
 import { AnimatePresence } from "motion/react";
 import RoomSearch from "./RoomSearch";
@@ -16,14 +16,6 @@ interface RoomListProps {
   refreshRooms: number;
 }
 
-interface NewRoom {
-  name: string;
-  description: string;
-  theme: string;
-  languages: string[];
-  isPrivate: boolean;
-}
-
 export const RoomList: React.FC<RoomListProps> = ({
   user,
   onSelectRoom,
@@ -37,7 +29,7 @@ export const RoomList: React.FC<RoomListProps> = ({
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const [joinCode, setJoinCode] = useState("");
@@ -53,67 +45,71 @@ export const RoomList: React.FC<RoomListProps> = ({
    * Obtiene el último mensaje de cada sala
    * y calcula cuántos mensajes no han sido leídos.
    */
-  const fetchLastMessages = async (userRooms: Room[]) => {
-    try {
-      const messagesByRoom: Record<string, Message | null> = {};
-      const unreadByRoom: Record<string, number> = {};
+  const fetchLastMessages = useCallback(
+    async (userRooms: Room[]) => {
+      try {
+        const messagesByRoom: Record<string, Message | null> = {};
+        const unreadByRoom: Record<string, number> = {};
 
-      await Promise.all(
-        userRooms.map(async (room) => {
-          try {
-            const response = await fetch(`${API_URL}/api/messages/${room.id}`);
+        await Promise.all(
+          userRooms.map(async (room) => {
+            try {
+              const response = await fetch(
+                `${API_URL}/api/messages/${room.id}`,
+              );
 
-            if (!response.ok) {
+              if (!response.ok) {
+                messagesByRoom[room.id] = null;
+                unreadByRoom[room.id] = 0;
+                return;
+              }
+
+              const messages: Message[] = await response.json();
+
+              if (messages.length === 0) {
+                messagesByRoom[room.id] = null;
+                unreadByRoom[room.id] = 0;
+                return;
+              }
+
+              // Obtener el mensaje más reciente
+              const lastMessage = messages[messages.length - 1];
+              messagesByRoom[room.id] = lastMessage;
+
+              // Contar mensajes que el usuario todavía no ha leído
+              const unread = messages.filter(
+                (message) =>
+                  message.senderId !== user.id &&
+                  !(message.readBy || []).includes(user.id),
+              ).length;
+
+              unreadByRoom[room.id] = unread;
+            } catch (error: unknown) {
+              console.error(
+                `Error al obtener mensajes de la sala ${room.id}:`,
+                error,
+              );
+
               messagesByRoom[room.id] = null;
               unreadByRoom[room.id] = 0;
-              return;
             }
+          }),
+        );
 
-            const messages: Message[] = await response.json();
-
-            if (messages.length === 0) {
-              messagesByRoom[room.id] = null;
-              unreadByRoom[room.id] = 0;
-              return;
-            }
-
-            // El backend ya devuelve los mensajes ordenados
-            // de más antiguo a más reciente.
-            const lastMessage = messages[messages.length - 1];
-
-            messagesByRoom[room.id] = lastMessage;
-
-            // Contar mensajes que el usuario todavía no ha leído.
-            const unread = messages.filter(
-              (message) =>
-                message.senderId !== user.id &&
-                !(message.readBy || []).includes(user.id),
-            ).length;
-
-            unreadByRoom[room.id] = unread;
-          } catch (error) {
-            console.error(
-              `Error al obtener mensajes de la sala ${room.id}:`,
-              error,
-            );
-
-            messagesByRoom[room.id] = null;
-            unreadByRoom[room.id] = 0;
-          }
-        }),
-      );
-
-      setLastMessages(messagesByRoom);
-      setUnreadCounts(unreadByRoom);
-    } catch (error) {
-      console.error("Error al obtener últimos mensajes:", error);
-    }
-  };
+        setLastMessages(messagesByRoom);
+        setUnreadCounts(unreadByRoom);
+      } catch (error: unknown) {
+        console.error("Error al obtener últimos mensajes:", error);
+      }
+    },
+    [user.id],
+  );
 
   /**
    * Obtiene las salas del usuario autenticado.
    */
-  const fetchRooms = async () => {
+
+  const fetchRooms = useCallback(async () => {
     // Mostrar indicador de carga
     setLoading(true);
 
@@ -134,17 +130,25 @@ export const RoomList: React.FC<RoomListProps> = ({
 
       // Actualizar el listado de salas
       setRooms(userRooms);
+
+      // Obtener los últimos mensajes de las salas del usuario
       await fetchLastMessages(userRooms);
-    } catch (error) {
+    } catch (error: unknown) {
+      console.error("Error al cargar salas:", error);
       setError("Error al cargar salas");
     } finally {
+      // Ocultar el indicador de carga
       setLoading(false);
     }
-  };
+  }, [user.id, fetchLastMessages]);
 
   useEffect(() => {
-    fetchRooms();
-  }, [user.id, refreshRooms]);
+    const timer = setTimeout(() => {
+      void fetchRooms();
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [fetchRooms, refreshRooms]);
 
   useEffect(() => {
     if (!rooms.length) return;
@@ -334,10 +338,6 @@ export const RoomList: React.FC<RoomListProps> = ({
       // Ocultar el indicador de carga
       setLoading(false);
     }
-  };
-
-  const handleRoomDeleted = (roomId: string) => {
-    setRooms((prevRooms) => prevRooms.filter((room) => room.id !== roomId));
   };
 
   const handleSelectRoom = async (room: Room) => {

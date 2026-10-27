@@ -34,15 +34,15 @@ export const ChatRoom = ({
     setInputText,
     typingUsers,
     setTypingUsers,
-    error,
+    // error,
     setError,
   } = useChatMessages();
 
   const [loadingAction, setLoadingAction] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isTTSLoading, setIsTTSLoading] = useState<string | null>(null); // messageId
-  const [ttsReadyMap, setTtsReadyMap] = useState<Record<string, string>>({}); // messageId -> blobUrl
+  // const [isTTSLoading, setIsTTSLoading] = useState<string | null>(null); // messageId
+  const [ttsReadyMap] = useState<Record<string, string>>({}); // messageId -> blobUrl
   const [micStatus, setMicStatus] = useState<
     "prompt" | "granted" | "denied" | "unknown"
   >("unknown");
@@ -62,7 +62,9 @@ export const ChatRoom = ({
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const recordingIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const recognitionRef = useRef<any>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -250,19 +252,45 @@ export const ChatRoom = ({
     }
   }, [roomId, setMessages]);
 
+  /**
+   *Actualizar el idioma del usuario
+   * desde los detalles
+   */
   const handleUpdateUserLanguage = async (newCode: string) => {
     if (isUpdatingLang) return;
+
     setIsUpdatingLang(true);
+
     try {
-      const updated = await api.updateUser(user.id, {
-        ...user,
-        language: newCode,
+      const response = await fetch(`${API_URL}/api/auth/${user.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...user,
+          language: newCode,
+        }),
       });
-      if (onUserUpdate) {
-        onUserUpdate(updated);
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "No fue posible actualizar el idioma");
       }
-    } catch (err) {
-      console.error("Failed to update user language:", err);
+
+      // Actualizar la sesión almacenada en el navegador
+      localStorage.setItem("babel_duo_user", JSON.stringify(data.user));
+
+      // Actualizar el usuario en toda la aplicación
+      onUserUpdate(data.user);
+      setRoomMembers((prevMembers) =>
+        prevMembers.map((member) =>
+          member.id === data.user.id ? { ...member, ...data.user } : member,
+        ),
+      );
+    } catch (error: unknown) {
+      console.error("Error al actualizar el idioma:", error);
     } finally {
       setIsUpdatingLang(false);
     }
@@ -333,9 +361,9 @@ export const ChatRoom = ({
     }
   };
 
-  const handleShare = () => {
-    setIsShareModalOpen(true);
-  };
+  // const handleShare = () => {
+  //   setIsShareModalOpen(true);
+  // };
 
   const startRecording = async () => {
     const isInIframe = window.self !== window.top;
@@ -591,7 +619,7 @@ export const ChatRoom = ({
     ).padStart(2, "0")}`;
   };
 
-  const handleSpeak = async (text: string, _messageId?: string) => {
+  const handleSpeak = async (text: string) => {
     try {
       speechSynthesis.cancel();
 
@@ -622,18 +650,18 @@ export const ChatRoom = ({
     });
   };
 
-  const playReadyAudio = (messageId: string) => {
-    const url = ttsReadyMap[messageId];
-    if (!url) return;
+  // const playReadyAudio = (messageId: string) => {
+  //   const url = ttsReadyMap[messageId];
+  //   if (!url) return;
 
-    const audio = new Audio(url);
-    audio.play().catch((err) => {
-      console.error("Manual play failed:", err);
-      if (err.name === "NotAllowedError") {
-        alert("Haz clic una vez en la página y vuelve a intentar el sonido.");
-      }
-    });
-  };
+  //   const audio = new Audio(url);
+  //   audio.play().catch((err) => {
+  //     console.error("Manual play failed:", err);
+  //     if (err.name === "NotAllowedError") {
+  //       alert("Haz clic una vez en la página y vuelve a intentar el sonido.");
+  //     }
+  //   });
+  // };
 
   // Se ejecuta cuando se pulsa la papelera del Header
   const handleDeleteRoom = () => {
@@ -774,7 +802,7 @@ export const ChatRoom = ({
           roomMembers={roomMembers}
           themeMode="classic"
           scrollRef={scrollRef}
-          ttsReadyMap={{}}
+          ttsReadyMap={ttsReadyMap}
           isTTSLoading={null}
           getTranslation={() => {}}
           handleSpeak={handleSpeak}
