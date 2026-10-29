@@ -23,7 +23,10 @@ const httpServer = http.createServer(app);
 // Crear servidor Socket.IO
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: [
+      "http://localhost:5173",
+      "https://babel-duo-frontend.onrender.com",
+    ],
     methods: ["GET", "POST"],
   },
 });
