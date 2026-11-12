@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
-import type { Room, UserProfile, Message } from "../../types";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import type { Room, UserProfile, Message, OnlineUser } from "../../types";
 import { Share2, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import ChatHeader from "./ChatHeader";
@@ -11,6 +11,8 @@ import RoomDetails from "./RoomDetails";
 import { RoomDeleteModal } from "../rooms/RoomDeleteModal";
 import { useChatMessages } from "../../hooks/useChatMessages";
 import { socket } from "../../services/socket";
+import { translateMessage } from "../../services/translator";
+import { detectMessageLanguage } from "../../services/languageDetector";
 
 interface ChatRoomProps {
   room: Room;
@@ -46,12 +48,16 @@ export const ChatRoom = ({
   const [micStatus, setMicStatus] = useState<
     "prompt" | "granted" | "denied" | "unknown"
   >("unknown");
+  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
 
   // Custom right sidebar and aesthetic styling states modeled after your Canva mock
   const [themeMode, setThemeMode] = useState<"classic" | "modern">("classic");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [copiedCodeFeedback, setCopiedCodeFeedback] = useState(false);
   const [isUpdatingLang, setIsUpdatingLang] = useState(false);
+
+  // Estado para controlar las traducciones
+  const translatingMessagesRef = useRef<Set<string>>(new Set());
 
   // Miembros de la sala
   const [roomMembers, setRoomMembers] = useState<UserProfile[]>([]);
@@ -181,20 +187,6 @@ export const ChatRoom = ({
   }, [messages]);
 
   useEffect(() => {
-    const handleReceiveMessage = (message: Message) => {
-      console.log("📩 Mensaje recibido:", message);
-
-      setMessages((prev) => [...prev, message]);
-    };
-
-    socket.on("receive-message", handleReceiveMessage);
-
-    return () => {
-      socket.off("receive-message", handleReceiveMessage);
-    };
-  }, [setMessages]);
-
-  useEffect(() => {
     const handleUserTyping = ({
       userId,
       userName,
@@ -251,6 +243,32 @@ export const ChatRoom = ({
       loadMessages();
     }
   }, [roomId, setMessages]);
+
+  // Escuchar y solicitar la lista de usuarios conectados
+  useEffect(() => {
+    const handleOnlineUsers = (users: OnlineUser[]) => {
+      setOnlineUsers(users);
+    };
+
+    const requestOnlineUsers = () => {
+      socket.emit("get-online-users", {
+        roomId: room.id,
+      });
+    };
+
+    socket.on("online-users", handleOnlineUsers);
+    socket.on("connect", requestOnlineUsers);
+
+    // Solicitar la lista si Socket.IO ya está conectado
+    if (socket.connected) {
+      requestOnlineUsers();
+    }
+
+    return () => {
+      socket.off("online-users", handleOnlineUsers);
+      socket.off("connect", requestOnlineUsers);
+    };
+  }, [room.id]);
 
   /**
    *Actualizar el idioma del usuario
@@ -312,16 +330,35 @@ export const ChatRoom = ({
     });
 
     try {
+      // 1. Detectar el idioma real del mensaje
+      let senderLanguage = user.language || "es";
+
+      try {
+        const detectedLanguage = await detectMessageLanguage(inputText.trim());
+
+        if (detectedLanguage) {
+          senderLanguage = detectedLanguage;
+        }
+      } catch (detectionError) {
+        console.warn(
+          "No se pudo detectar el idioma. Se utilizará el idioma preferido del usuario:",
+          detectionError,
+        );
+      }
+
+      console.log("Idioma detectado para el mensaje:", senderLanguage);
+
+      // 2. Crear y guardar el mensaje en el backend
       const response = await fetch(`${API_URL}/api/messages`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          roomId: roomId,
+          roomId,
           senderId: user.id,
           senderName: user.displayName,
-          senderLanguage: user.language,
+          senderLanguage,
           text: inputText.trim(),
           translations: {},
         }),
@@ -333,16 +370,23 @@ export const ChatRoom = ({
         throw new Error(data.message || "No se pudo crear el mensaje");
       }
 
-      // Mensaje creado y guardado en MongoDB
+      // 3. Obtener el mensaje creado
       const createdMessage = data.data;
 
-      // Mostrar inmediatamente el mensaje al emisor
+      console.log("Idioma detectado antes de guardar:", senderLanguage);
+      console.log(
+        "Idioma guardado por el backend:",
+        createdMessage.senderLanguage,
+      );
+      console.log("Mensaje completo:", createdMessage);
+
+      // 4. Mostrar inmediatamente el mensaje al emisor
       setMessages((prev) => [...prev, createdMessage]);
 
-      // Enviar el mensaje a los demás usuarios de la sala
+      // 5. Enviar el mensaje a los demás usuarios de la sala
       socket.emit("send-message", createdMessage);
 
-      // Limpiar el input
+      // 6. Limpiar el input
       setInputText("");
 
       window.dispatchEvent(
@@ -760,6 +804,120 @@ export const ChatRoom = ({
     });
   };
 
+  const getTranslation = useCallback(
+    async (message: Message) => {
+      const sourceLanguage = message.senderLanguage || "es";
+      const targetLanguage = user.language || "es";
+
+      // No traducir si el mensaje ya está en el idioma configurado
+      if (sourceLanguage === targetLanguage) return;
+
+      // No traducir si ya existe una traducción guardada
+      if (message.translations?.[targetLanguage]) return;
+
+      // Identificar cada traducción por mensaje e idioma de destino
+      const translationKey = `${message.id}-${targetLanguage}`;
+
+      // Evitar traducciones duplicadas simultáneamente
+      if (translatingMessagesRef.current.has(translationKey)) return;
+
+      translatingMessagesRef.current.add(translationKey);
+
+      try {
+        // Traducir el mensaje
+        const translatedText = await translateMessage(
+          message.text,
+          sourceLanguage,
+          targetLanguage,
+        );
+
+        // Guardar la traducción en el backend
+        const response = await fetch(
+          `${API_URL}/api/messages/${message.id}/translation`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              userId: user.id,
+              targetLanguage,
+              translatedText,
+            }),
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error("No se pudo guardar la traducción.");
+        }
+
+        // Actualizar el mensaje sin crear un registro nuevo
+        setMessages((previousMessages) =>
+          previousMessages.map((item) =>
+            item.id === message.id
+              ? {
+                  ...item,
+                  translations: {
+                    ...item.translations,
+                    [targetLanguage]: translatedText,
+                  },
+                }
+              : item,
+          ),
+        );
+      } catch (error) {
+        console.error("Error al traducir el mensaje:", error);
+
+        setError(
+          error instanceof Error
+            ? error.message
+            : "No se pudo traducir el mensaje.",
+        );
+      } finally {
+        // Liberar el control de traducción
+        translatingMessagesRef.current.delete(translationKey);
+      }
+    },
+    [user.id, user.language, setError, setMessages],
+  );
+
+  // Recibir mensajes nuevos mediante Socket.IO
+  useEffect(() => {
+    const handleReceiveMessage = (message: Message) => {
+      console.log("📩 Mensaje recibido:", message);
+
+      setMessages((previousMessages) => {
+        // Evitar agregar el mismo mensaje dos veces
+        const alreadyExists = previousMessages.some(
+          (item) => item.id === message.id,
+        );
+
+        if (alreadyExists) {
+          return previousMessages;
+        }
+
+        return [...previousMessages, message];
+      });
+
+      // Intentar traducir automáticamente el mensaje recibido
+      void getTranslation(message);
+    };
+
+    socket.on("receive-message", handleReceiveMessage);
+
+    return () => {
+      socket.off("receive-message", handleReceiveMessage);
+    };
+  }, [getTranslation, setMessages]);
+
+  // Traducir automáticamente los mensajes existentes,
+  // los mensajes propios y los nuevos cuando cambia el idioma.
+  useEffect(() => {
+    messages.forEach((message) => {
+      void getTranslation(message);
+    });
+  }, [messages, user.language, getTranslation]);
+
   return (
     <div className="flex-1 flex flex-row h-full overflow-hidden bg-white">
       {/* Área principal donde se muestra la conversación activa */}
@@ -777,6 +935,7 @@ export const ChatRoom = ({
         {/* Header del chat */}
         <ChatHeader
           room={room}
+          onlineUsers={onlineUsers}
           isOwner={isOwner}
           isSidebarOpen={isSidebarOpen}
           loadingAction={loadingAction}
@@ -804,7 +963,7 @@ export const ChatRoom = ({
           scrollRef={scrollRef}
           ttsReadyMap={ttsReadyMap}
           isTTSLoading={null}
-          getTranslation={() => {}}
+          getTranslation={getTranslation}
           handleSpeak={handleSpeak}
         />
 

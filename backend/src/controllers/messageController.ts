@@ -227,3 +227,75 @@ export const markMessagesAsRead = async (req: Request, res: Response) => {
     });
   }
 };
+
+// Método para guardar la traducción de un mensaje
+export const saveMessageTranslation = async (req: Request, res: Response) => {
+  try {
+    const { messageId } = req.params;
+    const { userId, targetLanguage, translatedText } = req.body;
+
+    // Validar datos obligatorios
+    if (!messageId || !userId || !targetLanguage || !translatedText?.trim()) {
+      return res.status(400).json({
+        message: "Los datos de la traducción son obligatorios.",
+      });
+    }
+
+    // Validar identificadores
+    if (
+      !mongoose.Types.ObjectId.isValid(messageId) ||
+      !mongoose.Types.ObjectId.isValid(userId)
+    ) {
+      return res.status(400).json({
+        message: "El ID del mensaje o del usuario no es válido.",
+      });
+    }
+
+    // Buscar el mensaje
+    const message = await Message.findById(messageId);
+
+    if (!message) {
+      return res.status(404).json({
+        message: "El mensaje no existe.",
+      });
+    }
+
+    // Verificar que el usuario pertenezca a la sala
+    const room = await Room.findById(message.roomId);
+
+    if (!room) {
+      return res.status(404).json({
+        message: "La sala no existe.",
+      });
+    }
+
+    const isMember = room.members.some(
+      (member) => member.toString() === userId,
+    );
+
+    if (!isMember) {
+      return res.status(403).json({
+        message: "El usuario no pertenece a esta sala.",
+      });
+    }
+
+    // Guardar la traducción sin eliminar las anteriores
+    message.set(`translations.${targetLanguage}`, translatedText.trim());
+
+    await message.save();
+
+    return res.status(200).json({
+      message: "Traducción guardada correctamente.",
+      data: {
+        id: message._id.toString(),
+        translations: Object.fromEntries(message.translations),
+      },
+    });
+  } catch (error) {
+    console.error("Error al guardar la traducción:", error);
+
+    return res.status(500).json({
+      message: "Error interno del servidor.",
+    });
+  }
+};

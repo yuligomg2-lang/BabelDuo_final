@@ -8,7 +8,8 @@ import {
   Trash2,
 } from "lucide-react";
 import type React from "react";
-import type { Room } from "../../types";
+import type { Room, OnlineUser } from "../../types";
+import { useState } from "react";
 
 /**
  * Propiedades necesarias para renderizar el encabezado del chat.
@@ -33,6 +34,7 @@ interface ChatHeaderProps {
   onToggleSidebar: () => void;
   onDeleteRoom: () => void;
   onLeaveRoom: () => void;
+  onlineUsers: OnlineUser[];
 }
 
 /**
@@ -40,6 +42,7 @@ interface ChatHeaderProps {
  */
 const ChatHeader: React.FC<ChatHeaderProps> = ({
   room,
+  onlineUsers,
   isOwner,
   isSidebarOpen,
   loadingAction,
@@ -49,6 +52,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
   onDeleteRoom,
   onLeaveRoom,
 }) => {
+  const [showOnlineUsers, setShowOnlineUsers] = useState(false);
   return (
     <div className="p-3 bg-[#e7ecee] border-gray-205/30 flex items-center justify-between pointer-events-auto select-none">
       <div className="flex items-center gap-3">
@@ -72,7 +76,48 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
               <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500 shrink-0" />
             )}
           </h2>
-          <p className="text-[11px] text-[#005c53] font-bold">online</p>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowOnlineUsers((previous) => !previous)}
+              className="flex items-center gap-1.5 text-[11px] text-[#005c53] font-bold hover:opacity-80 transition-opacity"
+            >
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              {onlineUsers.length} en línea
+              <span className="text-[9px]">{showOnlineUsers ? "▲" : "▼"}</span>
+            </button>
+
+            {showOnlineUsers && (
+              <div className="absolute left-0 top-full mt-2 w-52 bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden">
+                <div className="px-3 py-2 border-b border-gray-100">
+                  <p className="text-xs font-bold text-gray-700">
+                    Personas conectadas
+                  </p>
+                </div>
+
+                {onlineUsers.length > 0 ? (
+                  <div className="max-h-52 overflow-y-auto">
+                    {onlineUsers.map((onlineUser) => (
+                      <div
+                        key={onlineUser.userId}
+                        className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50"
+                      >
+                        <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
+
+                        <span className="text-xs text-gray-700 font-medium truncate">
+                          {onlineUser.userName}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="px-3 py-3 text-xs text-gray-400">
+                    No hay personas conectadas.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

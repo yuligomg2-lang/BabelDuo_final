@@ -3,6 +3,7 @@ import type { Message, UserProfile } from "../../types";
 import { motion } from "motion/react";
 import { getFlag } from "../../helpers/roomHelpers";
 import { CheckCheck, Globe, Loader2, Mic, Play, Volume2 } from "lucide-react";
+import { useState } from "react";
 
 interface MessageItemProps {
   message: Message; // Información del mensaje que se va a mostrar
@@ -27,6 +28,8 @@ const MessageItem: React.FC<MessageItemProps> = ({
 
   const isMe = String(message.senderId) === String(user.id);
 
+  const [isTranslationVisible, setIsTranslationVisible] = useState(true);
+
   const readers = (message.readBy ?? []).map((reader: any) =>
     String(
       typeof reader === "object" && reader !== null
@@ -46,6 +49,11 @@ const MessageItem: React.FC<MessageItemProps> = ({
 
   // Obtiene la traducción correspondiente al idioma del usuario
   const translation = message.translations?.[user.language];
+
+  const sourceLanguage = message.senderLanguage || "es";
+  const targetLanguage = user.language || "es";
+
+  const needsTranslation = sourceLanguage !== targetLanguage;
 
   return (
     <motion.div
@@ -135,43 +143,67 @@ const MessageItem: React.FC<MessageItemProps> = ({
         </div>
 
         {/* Traducción del mensaje al idioma del usuario */}
-        {translation && translation !== message.text && (
+        {translation && translation !== message.text && needsTranslation && (
           <div className="mt-2.5 pt-2.5 border-t border-gray-200/60 text-left">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="flex items-center gap-1 text-[10px] uppercase font-extrabold text-[#ff6000]">
-                <Globe className="w-3 h-3" /> Traducción ({user.language})
-              </div>
+            {isTranslationVisible ? (
+              <>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-1 text-[10px] uppercase font-extrabold text-[#ff6000]">
+                    <Globe className="w-3 h-3" />
+                    Traducción ({user.language})
+                  </div>
+
+                  <button
+                    onClick={() =>
+                      handleSpeak(
+                        translation,
+                        (message.id || (message as any)._id) + "-tl",
+                      )
+                    }
+                    className={`px-1.5 py-0.5 rounded text-[8px] font-bold tracking-wider flex items-center gap-1 transition-colors border select-none ${
+                      ttsReadyMap[(message.id || (message as any)._id) + "-tl"]
+                        ? "bg-amber-500 text-white border-amber-500/30"
+                        : "bg-gray-155/80 hover:bg-gray-200/80 text-gray-500 border-gray-200"
+                    }`}
+                  >
+                    {isTTSLoading ===
+                    (message.id || (message as any)._id) + "-tl" ? (
+                      <Loader2 className="w-2 h-2 animate-spin text-gray-450" />
+                    ) : ttsReadyMap[
+                        (message.id || (message as any)._id) + "-tl"
+                      ] ? (
+                      <Play className="w-2.5 h-2.5 fill-current" />
+                    ) : (
+                      <Volume2 className="w-2.5 h-2.5" />
+                    )}
+
+                    {ttsReadyMap[(message.id || (message as any)._id) + "-tl"]
+                      ? "Reproducir"
+                      : "Oír"}
+                  </button>
+                </div>
+
+                <p className="text-[13px] italic text-gray-700 leading-relaxed pr-2 break-words font-medium">
+                  {translation}
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => setIsTranslationVisible(false)}
+                  className="mt-2 text-[10px] text-gray-500 hover:text-[#0a3d70] hover:underline font-semibold"
+                >
+                  Ocultar traducción
+                </button>
+              </>
+            ) : (
               <button
-                onClick={() =>
-                  handleSpeak(
-                    translation,
-                    (message.id || (message as any)._id) + "-tl",
-                  )
-                }
-                className={`px-1.5 py-0.5 rounded text-[8px] font-bold tracking-wider flex items-center gap-1 transition-colors border select-none ${
-                  ttsReadyMap[(message.id || (message as any)._id) + "-tl"]
-                    ? "bg-amber-500 text-white border-amber-500/30"
-                    : "bg-gray-155/80 hover:bg-gray-200/80 text-gray-500 border-gray-200"
-                }`}
+                type="button"
+                onClick={() => setIsTranslationVisible(true)}
+                className="text-[10px] text-[#0a3d70] hover:underline font-bold"
               >
-                {isTTSLoading ===
-                (message.id || (message as any)._id) + "-tl" ? (
-                  <Loader2 className="w-2 h-2 animate-spin text-gray-450" />
-                ) : ttsReadyMap[
-                    (message.id || (message as any)._id) + "-tl"
-                  ] ? (
-                  <Play className="w-2.5 h-2.5 fill-current" />
-                ) : (
-                  <Volume2 className="w-2.5 h-2.5" />
-                )}
-                {ttsReadyMap[(message.id || (message as any)._id) + "-tl"]
-                  ? "Reproducir"
-                  : "Oír"}
+                Mostrar traducción
               </button>
-            </div>
-            <p className="text-[13px] italic text-gray-700 leading-relaxed pr-2 break-words font-medium">
-              {translation}
-            </p>
+            )}
           </div>
         )}
 
@@ -209,7 +241,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
       </div>
 
       {/* Acción para traducir el mensaje cuando aún no existe traducción */}
-      {!translation && !isMe && (
+      {!translation && needsTranslation && (
         <div className="mt-1 ml-2 text-[10px] text-gray-400 select-none">
           <button
             onClick={() => getTranslation(message)}

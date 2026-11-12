@@ -161,6 +161,7 @@ export const RoomList: React.FC<RoomListProps> = ({
         socket.emit("join-room", {
           roomId: room.id,
           userId: user.id,
+          userName: user.displayName,
         });
       });
     };

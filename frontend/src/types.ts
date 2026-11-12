@@ -11,6 +11,11 @@ export interface UserProfile {
   expiresAt?: string; // Fecha en la que expira la sesión del invitado.
 }
 
+export interface OnlineUser {
+  userId: string;
+  userName: string;
+}
+
 export interface Room {
   id: string;
   name: string;
