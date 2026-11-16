@@ -14,12 +14,17 @@ import { socket } from "../../services/socket";
 import { translateMessage } from "../../services/translator";
 import { detectMessageLanguage } from "../../services/languageDetector";
 
+export type ChatRoomTourAction = "open-share" | "close-share";
+
 interface ChatRoomProps {
   room: Room;
   user: UserProfile;
   onBack: () => void;
   onUserUpdate: (user: UserProfile | null) => void;
   onRoomDeleted: (roomId: string) => void;
+  tourActionRef?: React.MutableRefObject<
+    ((action: ChatRoomTourAction) => void) | null
+  >;
 }
 
 export const ChatRoom = ({
@@ -28,6 +33,7 @@ export const ChatRoom = ({
   onBack,
   onUserUpdate,
   onRoomDeleted,
+  tourActionRef,
 }: ChatRoomProps) => {
   const {
     messages,
@@ -43,6 +49,32 @@ export const ChatRoom = ({
   const [loadingAction, setLoadingAction] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  const handleTourAction = useCallback(
+    (action: "open-share" | "close-share") => {
+      if (action === "open-share") {
+        setIsShareModalOpen(true);
+      }
+
+      if (action === "close-share") {
+        setIsShareModalOpen(false);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!tourActionRef) return;
+
+    tourActionRef.current = handleTourAction;
+
+    return () => {
+      if (tourActionRef.current === handleTourAction) {
+        tourActionRef.current = null;
+      }
+    };
+  }, [tourActionRef, handleTourAction]);
+
   // const [isTTSLoading, setIsTTSLoading] = useState<string | null>(null); // messageId
   const [ttsReadyMap] = useState<Record<string, string>>({}); // messageId -> blobUrl
   const [micStatus, setMicStatus] = useState<

@@ -108,6 +108,7 @@ export default function HeaderAuth({
 
         {/* Botón para abrir o cerrar el panel de configuración */}
         <button
+          data-tour="settings-button"
           onClick={() => setShowSettings(!showSettings)}
           className="p-1.5 text-gray-400 hover:text-[#0a3d70] transition-colors rounded-lg hover:bg-gray-50"
           aria-label="Toggle user settings"
@@ -129,6 +130,7 @@ export default function HeaderAuth({
       <AnimatePresence>
         {showSettings && (
           <motion.div
+            data-tour="settings-panel"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
@@ -147,6 +149,7 @@ export default function HeaderAuth({
                   Idioma de preferencia
                 </label>
                 <select
+                  data-tour="settings-language"
                   value={language}
                   onChange={(e) => setLanguage(e.target.value)}
                   className="w-full p-2.5 border border-gray-200 rounded-xl text-xs bg-gray-50 focus:bg-white focus:outline-none focus:border-[#0a3d70] font-semibold text-gray-700"
@@ -186,6 +189,7 @@ export default function HeaderAuth({
 
               {/* Guardar la configuración del perfil */}
               <button
+                data-tour="settings-save"
                 onClick={handleSaveSettings}
                 disabled={loading}
                 className="flex-1 py-2 bg-[#0a3d70] text-white rounded-full text-xs font-bold hover:bg-[#082a4d] active:scale-95 transition-all cursor-pointer text-center block disabled:opacity-50"

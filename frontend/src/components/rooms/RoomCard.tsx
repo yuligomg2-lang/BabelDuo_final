@@ -63,6 +63,7 @@ const RoomCard: React.FC<RoomCardProps> = ({
   return (
     /* Roster Rooms List (Full-Bleed layout like WhatsApp chats) */
     <button
+      data-tour="room-card"
       key={roomId}
       onClick={() => onSelectRoom(room)}
       className={`w-full px-4 py-3 flex items-center gap-3 text-left transition-colors cursor-pointer group border-l-3 ${

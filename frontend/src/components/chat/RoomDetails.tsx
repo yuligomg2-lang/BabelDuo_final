@@ -46,7 +46,10 @@ const RoomDetails: React.FC<RoomDetailsProps> = ({
   // Si el panel está cerrado, no se muestra.
   if (!isOpen) return null;
   return (
-    <div className="hidden md:flex w-[320px] lg:w-[345px] border-l border-gray-200/25 bg-white flex-col h-full overflow-y-auto shrink-0 animate-in slide-in-from-right-10 duration-200 shadow-sm">
+    <div
+      data-tour="room-details"
+      className="hidden md:flex w-[320px] lg:w-[345px] border-l border-gray-200/25 bg-white flex-col h-full overflow-y-auto shrink-0 animate-in slide-in-from-right-10 duration-200 shadow-sm"
+    >
       {/* Encabezado del panel */}
       <div className="p-4 bg-[#f0f2f5] border-b border-gray-200/25 flex items-center justify-between select-none">
         <span className="text-xs font-bold text-gray-700 tracking-wide">
@@ -81,6 +84,7 @@ const RoomDetails: React.FC<RoomDetailsProps> = ({
             </div>
 
             <button
+              data-tour="room-theme"
               type="button"
               onClick={() =>
                 setThemeMode((prev) =>
@@ -108,6 +112,7 @@ const RoomDetails: React.FC<RoomDetailsProps> = ({
 
           <div className="relative">
             <select
+              data-tour="room-language"
               value={user.language}
               onChange={(e) => handleUpdateUserLanguage(e.target.value)}
               disabled={isUpdatingLang}
@@ -134,7 +139,10 @@ const RoomDetails: React.FC<RoomDetailsProps> = ({
             Room Members
           </span>
 
-          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-3">
+          <div
+            data-tour="room-members"
+            className="bg-white border border-gray-100 rounded-2xl shadow-sm p-3"
+          >
             {roomMembers.map((member) => (
               <div
                 key={member.id}
@@ -166,12 +174,16 @@ const RoomDetails: React.FC<RoomDetailsProps> = ({
           </span>
 
           <div className="flex flex-col gap-2.5">
-            <div className="bg-gray-50 border border-gray-150/50 rounded-xl p-3 text-center select-all font-mono font-bold text-[12px] tracking-wider text-gray-600 shadow-inner">
+            <div
+              data-tour="room-code"
+              className="bg-gray-50 border border-gray-150/50 rounded-xl p-3 text-center select-all font-mono font-bold text-[12px] tracking-wider text-gray-600 shadow-inner"
+            >
               {room.inviteCode || room.id}
             </div>
 
             {/* Copiar el código */}
             <button
+              data-tour="room-copy-code"
               type="button"
               onClick={() => {
                 navigator.clipboard.writeText(room.inviteCode);
@@ -204,6 +216,7 @@ const RoomDetails: React.FC<RoomDetailsProps> = ({
           <div className="flex flex-col gap-2">
             {isOwner ? (
               <button
+                data-tour="room-delete"
                 type="button"
                 onClick={handleDeleteRoom}
                 disabled={loadingAction}
@@ -218,6 +231,7 @@ const RoomDetails: React.FC<RoomDetailsProps> = ({
               </button>
             ) : (
               <button
+                data-tour="room-leave"
                 type="button"
                 onClick={handleLeaveRoom}
                 disabled={loadingAction}

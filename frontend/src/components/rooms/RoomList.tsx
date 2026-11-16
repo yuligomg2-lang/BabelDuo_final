@@ -9,11 +9,20 @@ import RoomJoinModal from "./RoomJoinModal";
 import RoomCreateModal from "./RoomCreateModal";
 import { socket } from "../../services/socket";
 
+export type RoomListTourAction =
+  | "open-join"
+  | "open-create"
+  | "close-modals"
+  | "select-first-room";
+
 interface RoomListProps {
   user: UserProfile;
   onSelectRoom: (room: Room) => void;
   selectedRoomId?: string;
   refreshRooms: number;
+  tourActionRef?: React.MutableRefObject<
+    ((action: RoomListTourAction) => boolean) | null
+  >;
 }
 
 export const RoomList: React.FC<RoomListProps> = ({
@@ -21,6 +30,7 @@ export const RoomList: React.FC<RoomListProps> = ({
   onSelectRoom,
   selectedRoomId,
   refreshRooms,
+  tourActionRef,
 }) => {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [lastMessages, setLastMessages] = useState<
@@ -207,7 +217,7 @@ export const RoomList: React.FC<RoomListProps> = ({
       socket.off("connect", handleConnect);
       socket.off("receive-message", handleReceiveMessage);
     };
-  }, [rooms, user.id, selectedRoomId]);
+  }, [rooms, user.id, user.displayName, selectedRoomId]);
 
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -341,45 +351,99 @@ export const RoomList: React.FC<RoomListProps> = ({
     }
   };
 
-  const handleSelectRoom = async (room: Room) => {
-    // Quitar inmediatamente la notificación visual
-    setUnreadCounts((prev) => ({
-      ...prev,
-      [room.id]: 0,
-    }));
+  const handleSelectRoom = useCallback(
+    async (room: Room) => {
+      // Quitar inmediatamente la notificación visual
+      setUnreadCounts((prev) => ({
+        ...prev,
+        [room.id]: 0,
+      }));
 
-    try {
-      const response = await fetch(`${API_URL}/api/messages/${room.id}/read`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId: user.id,
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-
-        console.error(
-          "No se pudieron marcar los mensajes como leídos:",
-          data.message,
+      try {
+        const response = await fetch(
+          `${API_URL}/api/messages/${room.id}/read`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              userId: user.id,
+            }),
+          },
         );
-      } else {
-        // Avisar a los demás usuarios que cambió el estado de lectura
-        socket.emit("messages-read", {
-          roomId: room.id,
-          userId: user.id,
-        });
-      }
-    } catch (error) {
-      console.error("Error al marcar mensajes como leídos:", error);
-    }
 
-    // Finalmente, pedirle a MainLayout que abra la sala
-    onSelectRoom(room);
-  };
+        if (!response.ok) {
+          const data = await response.json();
+
+          console.error(
+            "No se pudieron marcar los mensajes como leídos:",
+            data.message,
+          );
+        } else {
+          // Avisar a los demás usuarios que cambió el estado de lectura
+          socket.emit("messages-read", {
+            roomId: room.id,
+            userId: user.id,
+          });
+        }
+      } catch (error) {
+        console.error("Error al marcar mensajes como leídos:", error);
+      }
+
+      // Finalmente, pedirle a MainLayout que abra la sala
+      onSelectRoom(room);
+    },
+    [user.id, onSelectRoom],
+  );
+
+  const handleTourAction = useCallback(
+    (action: RoomListTourAction): boolean => {
+      if (action === "open-join") {
+        setIsModalOpen(false);
+        setIsJoinModalOpen(true);
+        return true;
+      }
+
+      if (action === "open-create") {
+        setIsJoinModalOpen(false);
+        setIsModalOpen(true);
+        return true;
+      }
+
+      if (action === "close-modals") {
+        setIsJoinModalOpen(false);
+        setIsModalOpen(false);
+        return true;
+      }
+
+      if (action === "select-first-room") {
+        if (loading) return false;
+
+        const firstRoom = rooms[0];
+
+        if (!firstRoom) return false;
+
+        void handleSelectRoom(firstRoom);
+        return true;
+      }
+
+      return false;
+    },
+    [rooms, loading, handleSelectRoom],
+  );
+
+  useEffect(() => {
+    if (!tourActionRef) return;
+
+    tourActionRef.current = handleTourAction;
+
+    return () => {
+      if (tourActionRef.current === handleTourAction) {
+        tourActionRef.current = null;
+      }
+    };
+  }, [tourActionRef, handleTourAction]);
 
   useEffect(() => {
     const handleLocalMessage = (event: Event) => {
@@ -421,7 +485,10 @@ export const RoomList: React.FC<RoomListProps> = ({
         isGuest={user.isGuest ?? false}
       />
 
-      <div className="flex-1 overflow-y-auto divide-y divide-[#f0f2f5] bg-white custom-scrollbar">
+      <div
+        data-tour="room-list"
+        className="flex-1 overflow-y-auto divide-y divide-[#f0f2f5] bg-white custom-scrollbar"
+      >
         {filteredRooms.map((room) => (
           <RoomCard
             key={room.id}

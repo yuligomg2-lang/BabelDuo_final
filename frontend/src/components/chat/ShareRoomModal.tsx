@@ -49,9 +49,13 @@ const ShareRoomModal: React.FC<ShareRoomModalProps> = ({
   };
   return (
     /* Fondo oscuro que bloquea la interacción con el resto de la aplicación */
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+    <div
+      data-tour="share-room-modal"
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
+    >
       {/* Contenedor principal del modal con animación de apertura */}
       <motion.div
+        data-tour="share-room-content"
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}

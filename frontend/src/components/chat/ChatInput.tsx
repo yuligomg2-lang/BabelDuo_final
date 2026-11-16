@@ -31,7 +31,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
   formatDuration,
 }) => {
   return (
-    <div className="p-3 bg-[#e7ecee]  border-none safe-area-bottom">
+    <div
+      data-tour="chat-input-area"
+      className="p-3 bg-[#e7ecee]  border-none safe-area-bottom"
+    >
       {isRecording ? (
         /* Mientras se graba mostramos el tiempo y el botón para detener */
         <div className="flex items-center justify-between bg-red-50 border border-red-100 p-1.5 rounded-xl animate-pulse">
@@ -61,6 +64,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
         >
           {/* Botón para iniciar la grabación */}
           <button
+            data-tour="chat-audio"
             type="button"
             onClick={startRecording}
             title="Grabar mensaje de voz"
@@ -72,6 +76,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
           {/* Campo donde se escribe el mensaje */}
           <div className="flex-1 relative">
             <input
+              data-tour="chat-message-input"
               type="text"
               value={inputText}
               onChange={(e) => {
@@ -87,17 +92,18 @@ const ChatInput: React.FC<ChatInputProps> = ({
               }}
               className="w-full h-12 bg-white border border-gray-200/60 rounded-full px-5 py-3 pr-16 text-sm outline-none focus:ring-1 focus:ring-[#0a3d70]/30 transition-shadow text-gray-800 placeholder-[#767676]"
               placeholder="Escribe un mensaje..."
-              maxLength={100}
+              maxLength={1000}
               disabled={loadingAction}
             />
 
             <span className="absolute right-4 bottom-1 text-[9px] text-gray-400">
-              {inputText.length}/100
+              {inputText.length}/1000
             </span>
           </div>
 
           {/* Botón para enviar el mensaje */}
           <button
+            data-tour="chat-send"
             type="submit"
             aria-label="Enviar mensaje"
             disabled={!inputText.trim() || loadingAction}

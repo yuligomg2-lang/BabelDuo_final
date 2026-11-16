@@ -70,7 +70,10 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
         </div>
 
         <div className="min-w-0">
-          <h2 className="font-bold text-gray-800 leading-tight text-sm flex items-center gap-2 truncate">
+          <h2
+            data-tour="chat-room-name"
+            className="font-bold text-gray-800 leading-tight text-sm flex items-center gap-2 truncate"
+          >
             {room.name}
             {isOwner && (
               <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500 shrink-0" />
@@ -78,6 +81,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
           </h2>
           <div className="relative">
             <button
+              data-tour="chat-online-users"
               type="button"
               onClick={() => setShowOnlineUsers((previous) => !previous)}
               className="flex items-center gap-1.5 text-[11px] text-[#005c53] font-bold hover:opacity-80 transition-opacity"
@@ -124,6 +128,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
       <div className="flex items-center gap-2 pr-1 md:pr-2">
         {/* Botón para compartir el código de invitación */}
         <button
+          data-tour="chat-share"
           type="button"
           title="Compartir sala (Código de invitación)"
           onClick={onShare}
@@ -135,6 +140,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
         {/* Botón para eliminar la sala (propietario) o salir de ella (participante) */}
         {isOwner ? (
           <button
+            data-tour="chat-delete-room"
             type="button"
             title="Eliminar Sala"
             onClick={onDeleteRoom}
@@ -149,6 +155,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
           </button>
         ) : (
           <button
+            data-tour="chat-room-action"
             type="button"
             title="Salir de la Sala"
             onClick={onLeaveRoom}
@@ -166,6 +173,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
         <div className="w-[1px] h-4 bg-gray-300 mx-1 hidden md:block" />
         {/* Mostrar u ocultar el panel lateral */}
         <button
+          data-tour="chat-info"
           type="button"
           onClick={onToggleSidebar}
           title={

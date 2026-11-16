@@ -19,8 +19,12 @@ const RoomCreateModal: React.FC<RoomCreateModalProps> = ({
   onSubmit,
 }) => {
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+    <div
+      data-tour="create-room-modal"
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
+    >
       <motion.div
+        data-tour="create-room-content"
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}

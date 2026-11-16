@@ -1,9 +1,13 @@
 import { API_URL } from "../../services/api";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { Room, UserProfile } from "../../types";
+
 import HeaderAuth from "./HeaderAuth";
-import { RoomList } from "../rooms/RoomList";
-import { ChatRoom } from "../chat/ChatRoom";
+import SidebarTools from "./SidebarTools";
+import GuidedTour from "../tutorial/GuidedTour";
+
+import { RoomList, type RoomListTourAction } from "../rooms/RoomList";
+import { ChatRoom, type ChatRoomTourAction } from "../chat/ChatRoom";
 
 interface MainLayoutProps {
   user: UserProfile;
@@ -13,27 +17,34 @@ interface MainLayoutProps {
 const MainLayout = ({ user, onUserUpdate }: MainLayoutProps) => {
   const [, setError] = useState("");
   const [, setSuccessMessage] = useState("");
+
   const [showSettings, setShowSettings] = useState(false);
+  const tourStorageKey = `babel_duo_tour_completed_${user.id}`;
+
+  const [showTour, setShowTour] = useState(() => {
+    return localStorage.getItem(tourStorageKey) !== "true";
+  });
   const [language, setLanguage] = useState(user?.language || "es");
   const [interests, setInterests] = useState(user?.interests?.join(", ") || "");
+
   const [loading, setLoading] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [refreshRooms, setRefreshRooms] = useState(0);
-  // const scrollRef = useRef<HTMLDivElement>(null);
 
-  //Metodos
-  /**
-   * Actualiza la configuración del perfil del usuario
-   */
+  const roomListTourActionRef = useRef<
+    ((action: RoomListTourAction) => boolean) | null
+  >(null);
+
+  const chatRoomTourActionRef = useRef<
+    ((action: ChatRoomTourAction) => void) | null
+  >(null);
+
   const handleSaveSettings = async () => {
-    // Verificar que exista un usuario autenticado
     if (!user) return;
 
-    // Mostrar indicador de carga
     setLoading(true);
 
     try {
-      // Crear el objeto con los datos actualizados
       const updatedUser: UserProfile = {
         ...user,
         language,
@@ -43,19 +54,14 @@ const MainLayout = ({ user, onUserUpdate }: MainLayoutProps) => {
           .filter((i) => i !== ""),
       };
 
-      // Actualizar el usuario
       const response = await fetch(`${API_URL}/api/auth/${user.id}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedUser),
       });
 
-      // Convertir la respuesta del backend
       const data = await response.json();
 
-      // Verificar que la actualización fue exitosa
       if (!response.ok) {
         throw new Error(
           data.message ||
@@ -63,16 +69,9 @@ const MainLayout = ({ user, onUserUpdate }: MainLayoutProps) => {
         );
       }
 
-      // Actualizar la sesión almacenada en el navegador
       localStorage.setItem("babel_duo_user", JSON.stringify(data.user));
-
-      // Actualizar el estado de la aplicación
       onUserUpdate(data.user);
-
-      // Cerrar el panel de configuración
       setShowSettings(false);
-
-      // Mostrar mensaje de éxito
       setSuccessMessage("Configuración actualizada correctamente.");
     } catch (error: unknown) {
       const mensaje =
@@ -84,35 +83,21 @@ const MainLayout = ({ user, onUserUpdate }: MainLayoutProps) => {
     }
   };
 
-  /**
-   * Cierra la sesión del usuario autenticado
-   * eliminando la sesión de localStorage.
-   */
   const handleSignOut = async () => {
-    // Eliminar únicamente la sesión actual
     localStorage.removeItem("babel_duo_user");
     localStorage.removeItem("babel_duo_room_id");
 
-    // Limpiar el estado de la aplicación
     onUserUpdate(null);
-
-    // Limpiar mensajes
     setError("");
     setSuccessMessage("");
   };
 
-  /**
-   * Maneja la selección de una sala desde el listado.
-   * Temporalmente solo muestra la sala seleccionada.
-   */
   const handleSelectRoom = (room: Room) => {
     console.log("Sala seleccionada:", room);
     setSelectedRoom(room);
   };
 
   const handleRoomDeleted = (roomId: string) => {
-    // Si la sala eliminada era la seleccionada,
-    // limpiamos la sala actual.
     if (selectedRoom?.id === roomId) {
       setSelectedRoom(null);
       setRefreshRooms((prev) => prev + 1);
@@ -120,13 +105,20 @@ const MainLayout = ({ user, onUserUpdate }: MainLayoutProps) => {
   };
 
   return (
-    <div className="flex h-screen">
-      {/* Sidebar */}
-      <div className="w-16 bg-white border-r border-gray-200"></div>
+    <div className="flex h-[100dvh] w-full overflow-hidden">
+      {/* Barra lateral de herramientas */}
+      <SidebarTools
+        onStartTour={() => setShowTour(true)}
+        onOpenProfile={() => setShowSettings(true)}
+      />
 
-      {/* Segunda columna */}
-      <div className="w-95 h-screen border-r border-gray-200  flex flex-col bg-white">
-        <div className="srink-0">
+      {/* Columna de salas y perfil */}
+      <div
+        className={`${
+          selectedRoom ? "hidden md:flex" : "flex"
+        } flex-1 min-w-0 md:flex-none md:w-[380px] h-full border-r border-gray-200 flex-col bg-white`}
+      >
+        <div className="shrink-0">
           <HeaderAuth
             user={user}
             showSettings={showSettings}
@@ -140,18 +132,24 @@ const MainLayout = ({ user, onUserUpdate }: MainLayoutProps) => {
             handleSignOut={handleSignOut}
           />
         </div>
+
         <div className="flex-1 overflow-y-auto">
           <RoomList
             user={user}
             onSelectRoom={handleSelectRoom}
             selectedRoomId={selectedRoom?.id}
             refreshRooms={refreshRooms}
+            tourActionRef={roomListTourActionRef}
           />
         </div>
       </div>
 
-      {/* Tercera columna */}
-      <div className="flex-1 bg-[#efeae2] overflow-hidden">
+      {/* Área principal de conversación */}
+      <div
+        className={`${
+          selectedRoom ? "flex" : "hidden md:flex"
+        } flex-1 min-w-0 h-full bg-[#efeae2] overflow-hidden`}
+      >
         {selectedRoom ? (
           <ChatRoom
             room={selectedRoom}
@@ -159,13 +157,28 @@ const MainLayout = ({ user, onUserUpdate }: MainLayoutProps) => {
             onUserUpdate={onUserUpdate}
             onBack={() => setSelectedRoom(null)}
             onRoomDeleted={handleRoomDeleted}
+            tourActionRef={chatRoomTourActionRef}
           />
         ) : (
-          <div className="h-full flex items-center justify-center text-gray-500">
-            Selecciona una sala para comenzar.
+          <div className="w-full h-full flex flex-col items-center justify-center text-center text-gray-500">
+            <div className="max-w-md px-4">
+              <p className="text-base">Selecciona una sala para comenzar.</p>
+            </div>
           </div>
         )}
       </div>
+
+      {/* Tutorial guiado */}
+      <GuidedTour
+        isOpen={showTour}
+        onClose={() => {
+          localStorage.setItem(tourStorageKey, "true");
+          setShowTour(false);
+        }}
+        roomListActionRef={roomListTourActionRef}
+        chatRoomActionRef={chatRoomTourActionRef}
+        hasSelectedRoom={!!selectedRoom}
+      />
     </div>
   );
 };

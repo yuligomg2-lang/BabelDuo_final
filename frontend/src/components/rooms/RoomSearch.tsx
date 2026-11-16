@@ -24,6 +24,7 @@ const RoomSearch: React.FC<RoomSearchProps> = ({
 
         {/* Campo para buscar salas por nombre o tema */}
         <input
+          data-tour="room-search"
           type="text"
           placeholder="Buscar salas..."
           value={searchTerm}
@@ -36,6 +37,7 @@ const RoomSearch: React.FC<RoomSearchProps> = ({
       <div className="flex gap-1 shrink-0">
         {/* Botón para unirse a una sala mediante un código de invitación */}
         <button
+          data-tour="room-join"
           onClick={onJoin}
           title="Ingresar código de invitación"
           className="p-1.5 text-gray-500 hover:text-[#ff6000] hover:bg-gray-100 rounded-lg transition-colors active:scale-95"
@@ -46,6 +48,7 @@ const RoomSearch: React.FC<RoomSearchProps> = ({
         {/* Botón para crear una nueva sala */}
         {!isGuest && (
           <button
+            data-tour="room-create"
             onClick={onCreate}
             title="Crear nueva sala"
             className="p-1.5 bg-[#0a3d70] text-white rounded-lg hover:bg-[#082a4d] transition-colors active:scale-95 shadow-sm"
